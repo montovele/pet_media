@@ -1,0 +1,25 @@
+{
+  "name": "plataforma-social-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API REST para la plataforma social",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "init:db": "node src/db/init.js",
+    "seed:db": "node src/db/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
+    "mysql2": "^3.14.1",
+    "stripe": "^23.0.0",
+    "zod": "^4.1.5"
+  }
+}
