@@ -10,7 +10,7 @@ router.use(requireAuth)
 
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await activityService.getActivities(req.user.id))
+    res.json(await activityService.getActivities(req.user))
   } catch (error) {
     next(error)
   }
@@ -18,7 +18,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', validate(activitySchema), async (req, res, next) => {
   try {
-    res.status(201).json(await activityService.createActivity(req.user.id, req.body))
+    res.status(201).json(await activityService.createActivity(req.user, req.body))
   } catch (error) {
     next(error)
   }

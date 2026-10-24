@@ -5,7 +5,7 @@ const { requireAuth } = require('../../middleware/auth.middleware')
 const router = express.Router()
 
 router.get('/callback', async (req, res) => {
-  let clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '')
+  let clientUrl = (process.env.CLIENT_URL || 'http://localhost:5199').replace(/\/$/, '')
   try {
     if (req.query.error) {
       throw new Error(req.query.error_description || req.query.error_reason || 'La autorización de Meta fue cancelada.')

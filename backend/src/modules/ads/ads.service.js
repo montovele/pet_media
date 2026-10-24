@@ -136,7 +136,7 @@ async function createCheckoutSession(userId, input) {
     connection.release()
   }
 
-  const clientUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || 'http://localhost:5173'
+  const clientUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || 'http://localhost:5199'
   try {
     session = await stripe.checkout.sessions.create({
       mode: 'payment',

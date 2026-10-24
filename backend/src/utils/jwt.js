@@ -20,6 +20,22 @@ function verifyToken(token) {
   return jwt.verify(token, getSecret())
 }
 
+function signAccessGrantToken(payload) {
+  return jwt.sign(payload, getSecret(), { expiresIn: '8h', audience: 'bioacta-access-grant' })
+}
+
+function verifyAccessGrantToken(token) {
+  return jwt.verify(token, getSecret(), { audience: 'bioacta-access-grant' })
+}
+
+function signAccessGrantSessionToken(payload) {
+  return jwt.sign(payload, getSecret(), { expiresIn: '8h', audience: 'bioacta-access-session' })
+}
+
+function verifyAccessGrantSessionToken(token) {
+  return jwt.verify(token, getSecret(), { audience: 'bioacta-access-session' })
+}
+
 function signOAuthState(payload) {
   return jwt.sign(payload, getSecret(), { expiresIn: '10m', audience: 'meta-oauth' })
 }
@@ -28,4 +44,13 @@ function verifyOAuthState(token) {
   return jwt.verify(token, getSecret(), { audience: 'meta-oauth' })
 }
 
-module.exports = { signToken, verifyToken, signOAuthState, verifyOAuthState }
+module.exports = {
+  signToken,
+  verifyToken,
+  signAccessGrantToken,
+  verifyAccessGrantToken,
+  signAccessGrantSessionToken,
+  verifyAccessGrantSessionToken,
+  signOAuthState,
+  verifyOAuthState,
+}

@@ -4,40 +4,25 @@ const path = require('path')
 const express = require('express')
 const multer = require('multer')
 const pool = require('../../config/db')
-const { requireAuth } = require('../../middleware/auth.middleware')
+const { requireAuth, getAccessGrantIds } = require('../../middleware/auth.middleware')
 const { verifyToken } = require('../../utils/jwt')
 
 const router = express.Router()
 const uploadDirectory = path.resolve(__dirname, '../../../uploads')
 const maxFilesPerUpload = 20
+const maxFileSize = 150 * 1024 * 1024
 const acceptedTypes = new Map([
   ['image/jpeg', { extension: '.jpg', type: 'image' }],
   ['image/png', { extension: '.png', type: 'image' }],
   ['image/webp', { extension: '.webp', type: 'image' }],
+  ['image/gif', { extension: '.gif', type: 'image' }],
+  ['image/avif', { extension: '.avif', type: 'image' }],
+  ['image/bmp', { extension: '.bmp', type: 'image' }],
   ['video/mp4', { extension: '.mp4', type: 'video' }],
   ['video/webm', { extension: '.webm', type: 'video' }],
 ])
 
 fs.mkdirSync(uploadDirectory, { recursive: true })
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDirectory,
-    filename: (_req, file, callback) => {
-      callback(null, `${randomUUID()}${acceptedTypes.get(file.mimetype).extension}`)
-    },
-  }),
-  limits: { fileSize: 50 * 1024 * 1024, files: maxFilesPerUpload },
-  fileFilter: (_req, file, callback) => {
-    if (!acceptedTypes.has(file.mimetype)) {
-      const error = new Error('Usa JPG, PNG, WebP, MP4 o WebM; el límite es 50 MB por archivo.')
-      error.statusCode = 400
-      callback(error)
-      return
-    }
-    callback(null, true)
-  },
-})
 
 function authenticatedUser(req) {
   const authorization = req.get('authorization')
@@ -51,6 +36,25 @@ function authenticatedUser(req) {
     return null
   }
 }
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadDirectory,
+    filename: (_req, file, callback) => {
+      callback(null, `${randomUUID()}${acceptedTypes.get(file.mimetype).extension}`)
+    },
+  }),
+  limits: { fileSize: maxFileSize, files: maxFilesPerUpload },
+  fileFilter: (_req, file, callback) => {
+    if (!acceptedTypes.has(file.mimetype)) {
+      const error = new Error('Usa JPG, PNG, WebP, GIF, AVIF, BMP, MP4 o WebM.')
+      error.statusCode = 400
+      callback(error)
+      return
+    }
+    callback(null, true)
+  },
+})
 
 router.post('/upload', requireAuth, upload.array('files', maxFilesPerUpload), async (req, res, next) => {
   const files = req.files || []
@@ -93,10 +97,13 @@ router.get('/:id', async (req, res, next) => {
     try {
       ;[rows] = await pool.query(
         `SELECT media.filename, media.user_id, media.story_id, activity_media.activity_id,
+          activities.animal_id, animals.created_by AS animal_created_by,
           stories.visibility, stories.moderation_status, users.is_active
         FROM story_media media
         LEFT JOIN stories ON stories.id = media.story_id
         LEFT JOIN activity_media ON activity_media.media_id = media.id
+        LEFT JOIN activities ON activities.id = activity_media.activity_id
+        LEFT JOIN animals ON animals.id = activities.animal_id
         JOIN users ON users.id = media.user_id
         WHERE media.id = ?
           AND (
@@ -112,7 +119,8 @@ router.get('/:id', async (req, res, next) => {
       if (error.code !== 'ER_NO_SUCH_TABLE') throw error
       ;[rows] = await pool.query(
         `SELECT media.filename, media.user_id, media.story_id,
-          NULL AS activity_id, stories.visibility, stories.moderation_status, users.is_active
+          NULL AS activity_id, NULL AS animal_id, NULL AS animal_created_by,
+          stories.visibility, stories.moderation_status, users.is_active
         FROM story_media media
         LEFT JOIN stories ON stories.id = media.story_id
         JOIN users ON users.id = media.user_id
@@ -152,12 +160,19 @@ router.get('/:id', async (req, res, next) => {
     }
     const media = rows[0]
     const userId = authenticatedUser(req)
+    const accessGrantIds = getAccessGrantIds(req.cookies, userId)
     let viewerCanModerate = false
+    let viewerIsSuperadmin = false
+    let viewerEmail = null
     if (userId) {
       const [viewers] = await pool.query('SELECT email, role, is_active FROM users WHERE id = ? LIMIT 1', [userId])
       const viewer = viewers[0]
+      viewerEmail = viewer?.email || null
       const superadminEmails = new Set((process.env.SUPERADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean))
       const legacyModeratorEmails = new Set((process.env.MODERATOR_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean))
+      viewerIsSuperadmin = Boolean(viewer?.is_active && (
+        viewer.role === 'superadmin' || superadminEmails.has(viewer.email.toLowerCase())
+      ))
       viewerCanModerate = Boolean(viewer?.is_active && (
         ['superadmin', 'admin', 'editor', 'moderator'].includes(viewer.role)
         || superadminEmails.has(viewer.email.toLowerCase())
@@ -183,9 +198,30 @@ router.get('/:id', async (req, res, next) => {
         return
       }
     }
-    if (media.activity_id && userId !== media.user_id) {
-      res.status(userId ? 403 : 401).json({ message: 'No tienes permiso para ver este archivo' })
-      return
+    if (media.activity_id && userId !== media.user_id && !viewerIsSuperadmin) {
+      const [animalAccess] = media.animal_id
+        ? await pool.query(
+          `SELECT 1 FROM animals
+           WHERE id = ? AND (created_by = ? OR EXISTS (
+             SELECT 1 FROM animal_custody
+             WHERE animal_custody.animal_id = animals.id
+               AND animal_custody.user_id = ? AND animal_custody.ended_at IS NULL
+           ) OR EXISTS (
+             SELECT 1 FROM access_grants
+             WHERE access_grants.animal_id = animals.id AND access_grants.recipient_email = ?
+               AND access_grants.revoked_at IS NULL
+               AND (access_grants.expires_at IS NULL OR access_grants.expires_at > UTC_TIMESTAMP())
+               AND (access_grants.password_hash IS NULL OR access_grants.id IN (?))
+               AND (JSON_CONTAINS(access_grants.permissions, JSON_QUOTE('animal:read'))
+                 OR JSON_CONTAINS(access_grants.permissions, JSON_QUOTE('animal:manage')))
+           )) LIMIT 1`,
+          [media.animal_id, userId, userId, viewerEmail, accessGrantIds.length ? accessGrantIds : ['']],
+        )
+        : [[]]
+      if (!animalAccess.length) {
+        res.status(userId ? 403 : 401).json({ message: 'No tienes permiso para ver este archivo' })
+        return
+      }
     }
     res.sendFile(media.filename, { root: uploadDirectory }, (error) => {
       if (error && !res.headersSent) next(error)

@@ -42,7 +42,7 @@ function configError() {
 }
 
 function resolveClientOrigin(origin) {
-  const configuredOrigin = new URL(process.env.CLIENT_URL || 'http://localhost:5173').origin
+  const configuredOrigin = new URL(process.env.CLIENT_URL || 'http://localhost:5199').origin
   if (!origin) return configuredOrigin
 
   try {

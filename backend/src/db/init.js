@@ -36,6 +36,175 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS animals (
+        id CHAR(36) PRIMARY KEY,
+        public_id CHAR(43) NOT NULL UNIQUE,
+        created_by CHAR(36) NULL,
+        species VARCHAR(80) NOT NULL,
+        name VARCHAR(120) NULL,
+        sex VARCHAR(40) NULL,
+        estimated_age VARCHAR(120) NULL,
+        physical_description TEXT NULL,
+        identity_status ENUM('provisional', 'registered') NOT NULL DEFAULT 'registered',
+        public_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_animals_creator_created (created_by, created_at),
+        CONSTRAINT fk_animals_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS animal_photos (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        created_by CHAR(36) NOT NULL,
+        filename VARCHAR(80) NOT NULL UNIQUE,
+        alt_text VARCHAR(180) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_animal_photos_animal (animal_id, created_at),
+        CONSTRAINT fk_animal_photos_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_animal_photos_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS animal_identifiers (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        created_by CHAR(36) NOT NULL,
+        identifier_type ENUM('microchip', 'tattoo', 'registry', 'other') NOT NULL,
+        reference_value VARCHAR(120) NOT NULL,
+        verified BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_animal_identifiers_reference (identifier_type, reference_value),
+        INDEX idx_animal_identifiers_animal (animal_id, created_at),
+        CONSTRAINT fk_animal_identifiers_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_animal_identifiers_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS animal_custody (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        user_id CHAR(36) NOT NULL,
+        role VARCHAR(40) NOT NULL DEFAULT 'caregiver',
+        started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ended_at TIMESTAMP NULL,
+        INDEX idx_animal_custody_current (animal_id, ended_at, user_id),
+        CONSTRAINT fk_animal_custody_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_animal_custody_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS custody_transfers (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        from_user_id CHAR(36) NOT NULL,
+        to_user_id CHAR(36) NULL,
+        recipient_email VARCHAR(180) NOT NULL,
+        status ENUM('pending', 'accepted', 'cancelled') NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP NULL,
+        INDEX idx_custody_transfer_recipient (to_user_id, status, created_at),
+        CONSTRAINT fk_custody_transfer_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_custody_transfer_from FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_custody_transfer_to FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS health_records (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        created_by CHAR(36) NOT NULL,
+        record_type VARCHAR(80) NOT NULL,
+        description TEXT NOT NULL,
+        record_date DATE NOT NULL,
+        details JSON NULL,
+        source ENUM('caregiver', 'professional') NOT NULL DEFAULT 'caregiver',
+        professional_name VARCHAR(180) NULL,
+        certified BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_health_records_animal_date (animal_id, record_date),
+        CONSTRAINT fk_health_records_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_health_records_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS care_schedules (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        created_by CHAR(36) NOT NULL,
+        name VARCHAR(120) NOT NULL,
+        dose VARCHAR(100) NULL,
+        frequency VARCHAR(120) NOT NULL,
+        interval_value SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+        interval_unit ENUM('hours', 'days', 'weeks') NOT NULL DEFAULT 'days',
+        next_at DATETIME NOT NULL,
+        time_zone VARCHAR(80) NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_care_schedules_animal_next (animal_id, active, next_at),
+        CONSTRAINT fk_care_schedules_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_care_schedules_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS care_logs (
+        id CHAR(36) PRIMARY KEY,
+        schedule_id CHAR(36) NOT NULL,
+        animal_id CHAR(36) NOT NULL,
+        user_id CHAR(36) NOT NULL,
+        result ENUM('administered', 'skipped') NOT NULL,
+        administered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_care_logs_schedule_date (schedule_id, administered_at),
+        CONSTRAINT fk_care_logs_schedule FOREIGN KEY (schedule_id) REFERENCES care_schedules(id) ON DELETE CASCADE,
+        CONSTRAINT fk_care_logs_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_care_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS lost_found_reports (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NULL,
+        user_id CHAR(36) NULL,
+        report_type ENUM('lost', 'found') NOT NULL,
+        species VARCHAR(80) NOT NULL,
+        report_date DATE NOT NULL,
+        location_approximate VARCHAR(180) NOT NULL,
+        description TEXT NOT NULL,
+        contact_method VARCHAR(180) NOT NULL,
+        status ENUM('open', 'resolved', 'closed') NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_lost_found_public (status, report_type, report_date),
+        CONSTRAINT fk_lost_found_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
+        CONSTRAINT fk_lost_found_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS lost_found_messages (
+        id CHAR(36) PRIMARY KEY,
+        report_id CHAR(36) NOT NULL,
+        sender_user_id CHAR(36) NOT NULL,
+        recipient_user_id CHAR(36) NOT NULL,
+        thread_id CHAR(36) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_lost_found_messages_report (report_id, created_at),
+        INDEX idx_lost_found_messages_sender (sender_user_id, created_at),
+        INDEX idx_lost_found_messages_thread (thread_id, created_at),
+        CONSTRAINT fk_lost_found_messages_report FOREIGN KEY (report_id) REFERENCES lost_found_reports(id) ON DELETE CASCADE,
+        CONSTRAINT fk_lost_found_messages_sender FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_lost_found_messages_recipient FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS access_grants (
+        id CHAR(36) PRIMARY KEY,
+        animal_id CHAR(36) NOT NULL,
+        created_by CHAR(36) NOT NULL,
+        recipient_email VARCHAR(180) NOT NULL,
+        password_hash VARCHAR(255) NULL,
+        role VARCHAR(60) NOT NULL,
+        permissions JSON NOT NULL,
+        expires_at DATETIME NULL,
+        revoked_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_access_grants_animal (animal_id, revoked_at, expires_at),
+        INDEX idx_access_grants_email (recipient_email, revoked_at),
+        CONSTRAINT fk_access_grants_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE CASCADE,
+        CONSTRAINT fk_access_grants_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS audit_logs (
+        id CHAR(36) PRIMARY KEY,
+        actor_id CHAR(36) NULL,
+        action VARCHAR(80) NOT NULL,
+        entity_type VARCHAR(80) NOT NULL,
+        entity_id CHAR(36) NULL,
+        changes JSON NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_audit_logs_created (created_at),
+        INDEX idx_audit_logs_actor (actor_id, created_at),
+        CONSTRAINT fk_audit_logs_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
       `CREATE TABLE IF NOT EXISTS posts (
         id CHAR(36) PRIMARY KEY,
         user_id CHAR(36) NOT NULL,
@@ -73,6 +242,7 @@ async function initializeDatabase() {
       `CREATE TABLE IF NOT EXISTS activities (
         id CHAR(36) PRIMARY KEY,
         user_id CHAR(36) NOT NULL,
+        animal_id CHAR(36) NULL,
         title VARCHAR(120) NOT NULL,
         description TEXT,
         activity_date DATE NOT NULL,
@@ -80,7 +250,9 @@ async function initializeDatabase() {
         category ENUM('walk', 'travel', 'food', 'wellness', 'culture', 'other') DEFAULT 'other',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_activities_user_date (user_id, activity_date),
-        CONSTRAINT fk_activities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        INDEX idx_activities_animal_date (animal_id, activity_date),
+        CONSTRAINT fk_activities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_activities_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
       `CREATE TABLE IF NOT EXISTS albums (
         id CHAR(36) PRIMARY KEY,
@@ -117,10 +289,11 @@ async function initializeDatabase() {
         CONSTRAINT fk_story_media_story FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
       `CREATE TABLE IF NOT EXISTS activity_media (
-        activity_id CHAR(36) PRIMARY KEY,
+        activity_id CHAR(36) NOT NULL,
         media_id CHAR(36) NOT NULL UNIQUE,
         user_id CHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (activity_id, media_id),
         CONSTRAINT fk_activity_media_activity FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
         CONSTRAINT fk_activity_media_media FOREIGN KEY (media_id) REFERENCES story_media(id) ON DELETE CASCADE,
         CONSTRAINT fk_activity_media_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -180,8 +353,10 @@ async function initializeDatabase() {
         title VARCHAR(180) NOT NULL,
         description TEXT NOT NULL,
         read_flag BOOLEAN DEFAULT FALSE,
+        dedupe_key VARCHAR(220) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_notifications_user_created (user_id, created_at),
+        UNIQUE KEY uq_notifications_user_dedupe (user_id, dedupe_key),
         CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
       `CREATE TABLE IF NOT EXISTS moderation_actions (
@@ -287,6 +462,8 @@ async function initializeDatabase() {
         id TINYINT UNSIGNED PRIMARY KEY,
         company_name VARCHAR(80) NOT NULL DEFAULT 'entremomentos',
         logo_url VARCHAR(255) NULL,
+        primary_color CHAR(7) NOT NULL DEFAULT '#187a75',
+        secondary_color CHAR(7) NOT NULL DEFAULT '#d55d45',
         updated_by CHAR(36) NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT chk_brand_settings_singleton CHECK (id = 1),
@@ -326,6 +503,114 @@ async function initializeDatabase() {
     for (const tableSql of tables) {
       await connection.query(tableSql)
     }
+    for (const [column, definition] of [
+      ['primary_color', "CHAR(7) NOT NULL DEFAULT '#187a75'"],
+      ['secondary_color', "CHAR(7) NOT NULL DEFAULT '#d55d45'"],
+    ]) {
+      const [columns] = await connection.query('SHOW COLUMNS FROM brand_settings LIKE ?', [column])
+      if (!columns.length) await connection.query(`ALTER TABLE brand_settings ADD COLUMN ${column} ${definition}`)
+    }
+    const [accessGrantPasswordColumn] = await connection.query("SHOW COLUMNS FROM access_grants LIKE 'password_hash'")
+    if (!accessGrantPasswordColumn.length) {
+      await connection.query('ALTER TABLE access_grants ADD COLUMN password_hash VARCHAR(255) NULL AFTER recipient_email')
+    }
+    const [accessGrantAnimalIdsColumn] = await connection.query("SHOW COLUMNS FROM access_grants LIKE 'animal_ids'")
+    if (!accessGrantAnimalIdsColumn.length) {
+      await connection.query('ALTER TABLE access_grants ADD COLUMN animal_ids JSON NULL')
+    }
+    const [accessGrantAllAnimalsColumn] = await connection.query("SHOW COLUMNS FROM access_grants LIKE 'all_animals'")
+    if (!accessGrantAllAnimalsColumn.length) {
+      await connection.query('ALTER TABLE access_grants ADD COLUMN all_animals BOOLEAN NOT NULL DEFAULT FALSE')
+    }
+    const [notificationDedupeColumn] = await connection.query("SHOW COLUMNS FROM notifications LIKE 'dedupe_key'")
+    if (!notificationDedupeColumn.length) {
+      await connection.query('ALTER TABLE notifications ADD COLUMN dedupe_key VARCHAR(220) NULL')
+    }
+    const [notificationDedupeIndex] = await connection.query("SHOW INDEX FROM notifications WHERE Key_name = 'uq_notifications_user_dedupe'")
+    if (!notificationDedupeIndex.length) {
+      await connection.query('ALTER TABLE notifications ADD UNIQUE KEY uq_notifications_user_dedupe (user_id, dedupe_key)')
+    }
+    const [healthDetailsColumn] = await connection.query("SHOW COLUMNS FROM health_records LIKE 'details'")
+    if (!healthDetailsColumn.length) {
+      await connection.query('ALTER TABLE health_records ADD COLUMN details JSON NULL AFTER record_date')
+    }
+    for (const [column, definition] of [
+      ['recipient_user_id', 'CHAR(36) NULL'],
+      ['thread_id', 'CHAR(36) NULL'],
+    ]) {
+      const [columns] = await connection.query('SHOW COLUMNS FROM lost_found_messages LIKE ?', [column])
+      if (!columns.length) await connection.query(`ALTER TABLE lost_found_messages ADD COLUMN ${column} ${definition}`)
+    }
+    await connection.query(
+      `UPDATE lost_found_messages messages
+       JOIN lost_found_reports reports ON reports.id = messages.report_id
+       SET messages.recipient_user_id = reports.user_id
+       WHERE messages.recipient_user_id IS NULL`,
+    )
+    await connection.query(
+      'UPDATE lost_found_messages SET thread_id = id WHERE thread_id IS NULL',
+    )
+    const [threadIndex] = await connection.query("SHOW INDEX FROM lost_found_messages WHERE Key_name = 'idx_lost_found_messages_thread'")
+    if (!threadIndex.length) {
+      await connection.query('ALTER TABLE lost_found_messages ADD INDEX idx_lost_found_messages_thread (thread_id, created_at)')
+    }
+    for (const [column, definition] of [
+      ['interval_value', 'SMALLINT UNSIGNED NOT NULL DEFAULT 1'],
+      ['interval_unit', "ENUM('hours', 'days', 'weeks') NOT NULL DEFAULT 'days'"],
+    ]) {
+      const [columns] = await connection.query('SHOW COLUMNS FROM care_schedules LIKE ?', [column])
+      if (!columns.length) await connection.query(`ALTER TABLE care_schedules ADD COLUMN ${column} ${definition}`)
+    }
+    const [identityStatusColumn] = await connection.query("SHOW COLUMNS FROM animals LIKE 'identity_status'")
+    if (!identityStatusColumn.length) {
+      await connection.query("ALTER TABLE animals ADD COLUMN identity_status ENUM('provisional', 'registered') NOT NULL DEFAULT 'registered'")
+    } else if (!identityStatusColumn[0].Type.includes("'registered'")) {
+      await connection.query("ALTER TABLE animals MODIFY identity_status ENUM('provisional', 'verified', 'registered') NOT NULL DEFAULT 'registered'")
+      await connection.query("UPDATE animals SET identity_status = 'registered' WHERE identity_status = 'verified'")
+      await connection.query("ALTER TABLE animals MODIFY identity_status ENUM('provisional', 'registered') NOT NULL DEFAULT 'registered'")
+    }
+    const [publicEnabledColumn] = await connection.query("SHOW COLUMNS FROM animals LIKE 'public_enabled'")
+    if (!publicEnabledColumn.length) {
+      await connection.query('ALTER TABLE animals ADD COLUMN public_enabled BOOLEAN NOT NULL DEFAULT FALSE')
+    }
+    const [recipientEmailColumn] = await connection.query("SHOW COLUMNS FROM custody_transfers LIKE 'recipient_email'")
+    if (!recipientEmailColumn.length) {
+      await connection.query('ALTER TABLE custody_transfers ADD COLUMN recipient_email VARCHAR(180) NULL')
+      await connection.query(
+        `UPDATE custody_transfers transfers
+         JOIN users ON users.id = transfers.to_user_id
+         SET transfers.recipient_email = users.email
+         WHERE transfers.recipient_email IS NULL`,
+      )
+    }
+    await connection.query(
+      `UPDATE custody_transfers transfers
+       JOIN users ON users.id = transfers.to_user_id
+       SET transfers.recipient_email = users.email
+       WHERE transfers.recipient_email IS NULL OR transfers.recipient_email = ''`,
+    )
+    const [transferEmailColumn] = await connection.query("SHOW COLUMNS FROM custody_transfers LIKE 'recipient_email'")
+    if (transferEmailColumn[0]?.Null === 'YES') {
+      await connection.query('ALTER TABLE custody_transfers MODIFY recipient_email VARCHAR(180) NOT NULL')
+    }
+    const [transferRecipientColumn] = await connection.query("SHOW COLUMNS FROM custody_transfers LIKE 'to_user_id'")
+    if (transferRecipientColumn.length && transferRecipientColumn[0].Null === 'NO') {
+      await connection.query('ALTER TABLE custody_transfers MODIFY to_user_id CHAR(36) NULL')
+    }
+    const [animalsMissingCustody] = await connection.query(
+      `SELECT animals.id, animals.created_by
+       FROM animals LEFT JOIN animal_custody
+         ON animal_custody.animal_id = animals.id
+         AND animal_custody.user_id = animals.created_by
+         AND animal_custody.ended_at IS NULL
+       WHERE animals.created_by IS NOT NULL AND animal_custody.id IS NULL`,
+    )
+    for (const animal of animalsMissingCustody) {
+      await connection.query(
+        "INSERT INTO animal_custody (id, animal_id, user_id, role) VALUES (?, ?, ?, 'caregiver')",
+        [require('crypto').randomUUID(), animal.id, animal.created_by],
+      )
+    }
 
     const userColumns = [
       ['cover_url', 'VARCHAR(255) NULL'],
@@ -338,6 +623,20 @@ async function initializeDatabase() {
     for (const [column, definition] of userColumns) {
       const [columns] = await connection.query('SHOW COLUMNS FROM users LIKE ?', [column])
       if (!columns.length) await connection.query(`ALTER TABLE users ADD COLUMN ${column} ${definition}`)
+    }
+    const [activityAnimalColumn] = await connection.query("SHOW COLUMNS FROM activities LIKE 'animal_id'")
+    if (!activityAnimalColumn.length) {
+      await connection.query('ALTER TABLE activities ADD COLUMN animal_id CHAR(36) NULL AFTER user_id')
+      await connection.query('ALTER TABLE activities ADD INDEX idx_activities_animal_date (animal_id, activity_date)')
+      await connection.query('ALTER TABLE activities ADD CONSTRAINT fk_activities_animal FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL')
+    }
+    const [activityMediaPrimaryKey] = await connection.query(
+      "SHOW INDEX FROM activity_media WHERE Key_name = 'PRIMARY'",
+    )
+    if (activityMediaPrimaryKey.length === 1 && activityMediaPrimaryKey[0].Column_name === 'activity_id') {
+      await connection.query(
+        'ALTER TABLE activity_media DROP PRIMARY KEY, ADD PRIMARY KEY (activity_id, media_id)',
+      )
     }
     await connection.query(
       `INSERT INTO ad_pricing_rules (id, currency, price_per_day_cents, min_duration_days, max_duration_days, checkout_enabled)

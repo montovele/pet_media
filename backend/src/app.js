@@ -7,6 +7,8 @@ const authRoutes = require('./modules/auth/auth.routes')
 const feedRoutes = require('./modules/feed/feed.routes')
 const mediaRoutes = require('./modules/media/media.routes')
 const activityRoutes = require('./modules/activities/activities.routes')
+const animalRoutes = require('./modules/animals/animals.routes')
+const bioActaRoutes = require('./modules/animals/bioActa.routes')
 const photosRoutes = require('./modules/photos/photos.routes')
 const albumsRoutes = require('./modules/albums/albums.routes')
 const socialRoutes = require('./modules/social/social.routes')
@@ -14,17 +16,19 @@ const notificationsRoutes = require('./modules/notifications/notifications.route
 const moderationRoutes = require('./modules/moderation/moderation.routes')
 const adsRoutes = require('./modules/ads/ads.routes')
 const brandRoutes = require('./modules/brand/brand.routes')
+const { restrictAccessGuestRequests } = require('./middleware/auth.middleware')
 const { errorMiddleware, notFoundMiddleware } = require('./middleware/error.middleware')
 
 const app = express()
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'http://localhost:5199',
   credentials: true,
 }))
 app.use('/api/ads/webhook', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
+app.use('/api', restrictAccessGuestRequests)
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, message: 'API funcionando' })
@@ -34,6 +38,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/brand', brandRoutes)
 app.use('/api/media', mediaRoutes)
 app.use('/api/activities', activityRoutes)
+app.use('/api/animals', animalRoutes)
+app.use('/api', bioActaRoutes)
 app.use('/api/photos', photosRoutes)
 app.use('/api/albums', albumsRoutes)
 app.use('/api/social', socialRoutes)
