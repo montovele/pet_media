@@ -117,7 +117,7 @@ npm install
 npm run dev
 ```
 
-El backend debe mostrar `Servidor escuchando en http://localhost:4000` y mantener esa terminal ocupada. Comprueba que responde en `http://localhost:4000/health`; debe devolver `{"ok":true,"message":"API funcionando"}`. Para detenerlo usa `Ctrl+C` en esa terminal. `npm start` también inicia el servidor, pero no reinicia automáticamente al cambiar archivos.
+El backend debe mostrar `Servidor escuchando en http://localhost:4020` y mantener esa terminal ocupada. Comprueba que responde en `http://localhost:4020/health`; debe devolver `{"ok":true,"message":"API funcionando"}`. Para detenerlo usa `Ctrl+C` en esa terminal. `npm start` también inicia el servidor, pero no reinicia automáticamente al cambiar archivos.
 
 Terminal 2, desde la carpeta `personal-social`:
 
@@ -126,7 +126,7 @@ npm install
 npm run dev
 ```
 
-Abre la URL local que indique Vite, normalmente `http://localhost:5173`. Si el prompt vuelve justo después del mensaje de escucha, comprueba `/health` antes de iniciar otra instancia: puede haber otro proceso del backend activo en una terminal distinta.
+Abre la URL `http://localhost:5199` de Vite. Si el prompt vuelve justo después del mensaje de escucha, comprueba `/health` antes de iniciar otra instancia: puede haber otro proceso del backend activo en una terminal distinta.
 
 Para pruebas:
 
@@ -495,7 +495,7 @@ VITE_API_URL=/api
 VITE_APP_NAME=Personal Social
 ```
 
-Vite reenvía las peticiones `/api` a `http://localhost:4000` mediante `server.proxy` en `vite.config.ts`. También se puede definir `VITE_API_URL=http://localhost:4000/api` para conectar directamente al backend; en ese caso el proxy no se utiliza.
+Vite reenvía las peticiones `/api` a `http://localhost:4020` mediante `server.proxy` en `vite.config.ts`. También se puede definir `VITE_API_URL=http://localhost:4020/api` para conectar directamente al backend; en ese caso el proxy no se utiliza.
 
 Producción:
 

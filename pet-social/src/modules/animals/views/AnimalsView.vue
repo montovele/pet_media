@@ -108,7 +108,12 @@ async function createAnimal() {
         : [],
     }
     if (!duplicateConfirmed.value) {
-      duplicateMatches.value = await animalsApi.findDuplicates(values)
+      duplicateMatches.value = await animalsApi.findDuplicates({
+        species: values.species,
+        name: values.name,
+        physicalDescription: values.physicalDescription,
+        identifiers: values.identifiers,
+      })
       if (duplicateMatches.value.matches.length || duplicateMatches.value.possiblePrivateMatch) {
         error.value = duplicateMatches.value.matches.length
           ? 'Encontramos registros públicos parecidos. Revísalos antes de crear otra identidad.'

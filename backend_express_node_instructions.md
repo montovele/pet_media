@@ -169,7 +169,7 @@ npm install -D typescript ts-node @types/node @types/express @types/cors @types/
 Crea `.env`:
 
 ```env
-PORT=4000
+PORT=4020
 NODE_ENV=development
 DB_HOST=localhost
 DB_PORT=3306
@@ -178,7 +178,7 @@ DB_PASSWORD=tu_password_mysql
 DB_NAME=social_db
 JWT_SECRET=tu_clave_secreta_super_segura
 JWT_EXPIRES_IN=7d
-CLIENT_URL=http://localhost:5173
+CLIENT_URL=http://localhost:5199
 UPLOAD_DIR=./uploads
 SOCIAL_INSTAGRAM_CLIENT_ID=
 SOCIAL_INSTAGRAM_CLIENT_SECRET=
@@ -496,7 +496,7 @@ dotenv.config()
 const app = express()
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'http://localhost:5199',
   credentials: true,
 }))
 app.use(express.json({ limit: '10mb' }))
@@ -526,7 +526,7 @@ module.exports = app
 ```js
 const app = require('./app')
 
-const PORT = process.env.PORT || 4000
+const PORT = process.env.PORT || 4020
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`)
@@ -820,7 +820,7 @@ module.exports = { notFoundMiddleware, errorMiddleware }
 7. Agregar uploads
 8. Agregar notificaciones
 9. Agregar social accounts + publicaciones
-10. Conectar frontend a `http://localhost:4000/api`
+10. Conectar frontend a `http://localhost:4020/api`
 
 ---
 
@@ -856,7 +856,7 @@ En el frontend Vue 3, define esto:
 
 ```ts
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4020/api',
   withCredentials: true,
 })
 ```
@@ -903,7 +903,7 @@ dotenv.config()
 const app = express()
 
 app.use(cors({
-  origin: process.env.CLIENT_URL ?? 'http://localhost:5173',
+  origin: process.env.CLIENT_URL ?? 'http://localhost:5199',
   credentials: true,
 }))
 
@@ -934,7 +934,7 @@ export default app
 ```ts
 import app from './app'
 
-const port = Number(process.env.PORT ?? 4000)
+const port = Number(process.env.PORT ?? 4020)
 
 app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`)
@@ -1403,7 +1403,7 @@ Una vez tengas este backend construido, conecta el frontend con axios apuntando 
 
 ```ts
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4020/api',
 })
 ```
 

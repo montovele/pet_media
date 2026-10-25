@@ -156,9 +156,15 @@ const brand = useBrandStore()
 @keyframes hero-arrive { from { transform: scale(1.07); filter: saturate(.8); } to { transform: scale(1.015); filter: saturate(1); } }
 @keyframes copy-arrive { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 760px) {
-  .public-header { height: 62px; }
+  .public-header { height: 62px; gap: 8px; padding-right: 12px; padding-left: 12px; }
   .public-header nav { display: none; }
-  .public-login-link { display: none; }
+  .public-header .brand { gap: 7px; }
+  .public-header .brand-mark { width: 32px; height: 32px; }
+  .public-header .brand-name { font-size: 13px; }
+  .public-header-actions { flex: 0 0 auto; gap: 6px; }
+  .public-login-link { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: transparent; font-size: 9px; white-space: nowrap; }
+  .public-header-cta { min-height: 34px; gap: 4px; padding: 0 9px; font-size: 9px; white-space: nowrap; }
+  .public-header-cta svg { width: 12px; height: 12px; }
   .public-hero { min-height: 590px; min-height: min(690px, 82svh); }
   .hero-copy { padding: 35px 23px; }
   .hero-copy h1 { font-size: 54px; }

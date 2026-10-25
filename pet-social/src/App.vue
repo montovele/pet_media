@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ArrowUp, BookOpen, House, LogOut, Megaphone, Palette, PawPrint, Pencil, ShieldCheck, Sparkles, UserRound } from 'lucide-vue-next'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { Activity, ArrowUp, Bell, BookOpen, Camera, House, Images, LogOut, Megaphone, Menu, Palette, PawPrint, Pencil, Settings, Share2, ShieldCheck, Sparkles, UserRound, X } from 'lucide-vue-next'
 import CreateStoryDialog from './components/CreateStoryDialog.vue'
 import { useAuthStore } from './stores/auth'
 import { useFeedStore } from './stores/feed'
@@ -15,6 +15,7 @@ const ui = useUiStore()
 const brand = useBrandStore()
 const route = useRoute()
 const router = useRouter()
+const mobileNavOpen = ref(false)
 const defaultProfile = {
   name: 'Mariana López',
   avatarUrl: DEFAULT_AVATAR_URL,
@@ -50,24 +51,32 @@ const accessLanding = computed(() => {
 })
 const navigationItems = computed(() => {
   if (auth.user?.isAccessGuest) {
-    return [{ to: accessLanding.value, label: 'Expediente compartido', icon: ShieldCheck }]
+    return [{ to: accessLanding.value, label: 'Expediente compartido', mobileLabel: 'Expediente', icon: ShieldCheck }]
   }
   const adItem = auth.user?.role === 'superadmin'
-    ? { to: '/admin/campaigns', label: 'Anuncios', icon: Megaphone }
-    : { to: '/campaigns/checkout', label: 'Promocionar mi marca', icon: Megaphone }
+    ? { to: '/admin/campaigns', label: 'Anuncios', mobileLabel: 'Anuncios', icon: Megaphone }
+    : { to: '/campaigns/checkout', label: 'Promocionar mi marca', mobileLabel: 'Promover', icon: Megaphone }
 
   return [
-    { to: '/home', label: 'Panel de cuidado', icon: House },
-    { to: '/bioacta/inicio', label: 'BIO-ACTA', icon: ShieldCheck },
-    { to: '/animals', label: auth.user?.role === 'superadmin' ? 'Registros animales' : 'Mis animales', icon: PawPrint },
-    { to: '/stories', label: 'Historias', icon: BookOpen },
-    { to: '/profile', label: 'Mi cuenta', icon: UserRound },
-    ...(auth.user?.role === 'superadmin' ? [{ to: '/admin/brand', label: 'Marca y estilo', icon: Palette }] : []),
+    { to: '/home', label: 'Panel de cuidado', mobileLabel: 'Inicio', icon: House },
+    { to: '/bioacta/inicio', label: 'BIO-ACTA', mobileLabel: 'BIO-ACTA', icon: ShieldCheck },
+    { to: '/animals', label: auth.user?.role === 'superadmin' ? 'Registros animales' : 'Mis animales', mobileLabel: 'Animales', icon: PawPrint },
+    { to: '/stories', label: 'Historias', mobileLabel: 'Historias', icon: BookOpen },
+    { to: '/activities', label: 'Actividades', mobileLabel: 'Actividad', icon: Activity },
+    { to: '/photos', label: 'Fotos', mobileLabel: 'Fotos', icon: Camera },
+    { to: '/albums', label: 'Álbumes', mobileLabel: 'Álbumes', icon: Images },
+    { to: '/notifications', label: 'Notificaciones', mobileLabel: 'Avisos', icon: Bell },
+    { to: '/settings/social', label: 'Cuentas conectadas', mobileLabel: 'Redes', icon: Settings },
+    { to: '/social/publications', label: 'Publicaciones externas', mobileLabel: 'Publicaciones', icon: Share2 },
+    { to: '/profile', label: 'Mi cuenta', mobileLabel: 'Cuenta', icon: UserRound },
+    ...(auth.user?.role === 'superadmin' ? [{ to: '/admin/brand', label: 'Marca y estilo', mobileLabel: 'Marca', icon: Palette }] : []),
     adItem,
-    ...(auth.user?.role === 'superadmin' ? [{ to: '/supervision', label: 'Supervisión', icon: ShieldCheck }] : []),
-    ...(auth.user?.isModerator ? [{ to: '/moderation', label: auth.user.role === 'superadmin' ? 'Administración' : 'Moderación', icon: ShieldCheck }] : []),
+    ...(auth.user?.role === 'superadmin' ? [{ to: '/supervision', label: 'Supervisión', mobileLabel: 'Supervisión', icon: ShieldCheck }] : []),
+    ...(auth.user?.isModerator ? [{ to: '/moderation', label: auth.user.role === 'superadmin' ? 'Administración' : 'Moderación', mobileLabel: auth.user.role === 'superadmin' ? 'Admin' : 'Moderar', icon: ShieldCheck }] : []),
   ]
 })
+
+watch(() => route.fullPath, () => { mobileNavOpen.value = false })
 
 async function handleLogout() {
   await auth.logout()
@@ -114,12 +123,19 @@ async function publishStory(story: Parameters<typeof feed.saveStory>[0]) {
       <main class="main-content"><RouterView /></main>
     </div>
 
-    <nav class="mobile-nav" aria-label="Navegación móvil">
-      <RouterLink v-if="!auth.user?.isAccessGuest" to="/home" aria-label="Panel de cuidado"><House :size="20" /></RouterLink>
-      <RouterLink :to="accessLanding" :aria-label="auth.user?.isAccessGuest ? 'Expediente compartido' : 'Mis animales'"><PawPrint :size="20" /></RouterLink>
-      <RouterLink v-if="!auth.user?.isAccessGuest" to="/stories" aria-label="Historias"><BookOpen :size="20" /></RouterLink>
-      <RouterLink v-if="!auth.user?.isAccessGuest" to="/profile" aria-label="Mi cuenta"><UserRound :size="20" /></RouterLink>
+    <nav v-if="mobileNavOpen" id="mobile-nav-panel" class="mobile-nav-panel" aria-label="Todos los módulos">
+      <RouterLink v-for="item in navigationItems" :key="item.to" :to="item.to" :title="item.label">
+        <component :is="item.icon" :size="18" :stroke-width="2" />
+        <span>{{ item.label }}</span>
+      </RouterLink>
     </nav>
+    <div class="mobile-nav">
+      <button type="button" :aria-expanded="mobileNavOpen" aria-controls="mobile-nav-panel" @click="mobileNavOpen = !mobileNavOpen">
+        <X v-if="mobileNavOpen" :size="20" />
+        <Menu v-else :size="20" />
+        <span>{{ mobileNavOpen ? 'Cerrar módulos' : 'Ver todos los módulos' }}</span>
+      </button>
+    </div>
   </template>
   <CreateStoryDialog
     :model-value="ui.storyDialogOpen"
