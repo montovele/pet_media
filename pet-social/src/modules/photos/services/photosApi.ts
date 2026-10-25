@@ -7,7 +7,8 @@ const photoSchema = z.object({
   url: z.string(),
   title: z.string(),
   createdAt: z.string(),
-  source: z.enum(['Historia', 'Publicación']),
+  source: z.enum(['Historia', 'Publicación', 'Actividad']),
+  mediaType: z.enum(['image', 'video']).default('image'),
 })
 
 export const photosApi = {

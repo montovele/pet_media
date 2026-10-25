@@ -537,35 +537,6 @@ function formatAccessGrantLogin(row) {
   }
 }
 
-async function findAccessGrantLogin(email, password) {
-  const [rows] = await pool.query(
-    `SELECT id, animal_id, animal_ids, all_animals, recipient_email, password_hash, role, permissions, expires_at
-     FROM access_grants
-     WHERE recipient_email = ?
-       AND password_hash IS NOT NULL
-       AND revoked_at IS NULL
-       AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP())
-     ORDER BY created_at DESC
-     LIMIT 10`,
-    [email.trim().toLowerCase()],
-  )
-  if (rows.length === 10) {
-    const error = new Error('Hay varios accesos vigentes para este correo. Inicia desde el enlace de invitación para elegir el expediente correcto.')
-    error.statusCode = 409
-    throw error
-  }
-  const matches = []
-  for (const row of rows) {
-    if (await bcrypt.compare(password, row.password_hash)) matches.push(row)
-  }
-  if (matches.length > 1) {
-    const error = new Error('Hay varios accesos vigentes para este correo. Inicia desde el enlace de invitación para elegir el expediente correcto.')
-    error.statusCode = 409
-    throw error
-  }
-  return matches.length ? formatAccessGrantLogin(matches[0]) : null
-}
-
 async function revokeAccessGrant(user, grantId) {
   const [rows] = await pool.query('SELECT id, animal_id FROM access_grants WHERE id = ? LIMIT 1', [grantId])
   if (!rows.length) throw notFound('No se encontró el acceso compartido.')
@@ -688,7 +659,6 @@ module.exports = {
   updateAccessGrant,
   unlockAccessGrant,
   loginAccessGrant,
-  findAccessGrantLogin,
   revokeAccessGrant,
   getPublicBioActa,
   getPublicPhoto,

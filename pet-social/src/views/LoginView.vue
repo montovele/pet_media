@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onUnmounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import { ArrowLeft, ArrowRight, Eye, EyeOff, PawPrint } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { loginSchema } from '../modules/auth/services/authApi'
+import { useBrandStore } from '../modules/brand/stores/brand'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const brand = useBrandStore()
 const auth = useAuthStore()
 const accessInvite = typeof route.query.next === 'string'
   ? route.query.next.match(/^\/bioacta\/acceso\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\?|$)/i)
@@ -20,6 +22,14 @@ const fieldErrors = reactive<Record<string, string>>({})
 const serverError = ref('')
 const loading = ref(false)
 const passwordVisible = ref(false)
+
+watch([loginMode, () => brand.name], ([mode, brandName]) => {
+  document.title = `${brandName} · ${mode === 'temporary' ? 'Acceso temporal' : 'Cuenta personal'}`
+}, { immediate: true })
+
+onUnmounted(() => {
+  document.title = `${brand.name} · Su identidad lo acompaña`
+})
 
 function getGrantId(value: string) {
   const match = value.trim().match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i)

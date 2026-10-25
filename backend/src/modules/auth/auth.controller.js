@@ -15,20 +15,13 @@ async function register(req, res) {
 }
 
 async function login(req, res) {
-  try {
-    const { user, token } = await authService.login(req.body)
-    res.clearCookie('bioacta_guest_session', cookieOptions)
-    res.cookie('social_session', token, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
-    return res.status(200).json({ user })
-  } catch (error) {
-    if (error.statusCode !== 401) throw error
-    const grant = await bioActaService.findAccessGrantLogin(req.body.email, req.body.password)
-    if (!grant) throw error
-    return establishAccessGrantSession(res, grant)
-  }
+  const { user, token } = await authService.login(req.body)
+  res.clearCookie('bioacta_guest_session', cookieOptions)
+  res.cookie('social_session', token, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  })
+  return res.status(200).json({ user })
 }
 
 function establishAccessGrantSession(res, grant) {

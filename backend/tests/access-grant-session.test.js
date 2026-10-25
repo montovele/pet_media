@@ -61,40 +61,6 @@ test('temporary sessions are restricted to the shared animal read endpoints', ()
   assert.equal(isAllowedAccessGuestRequest('GET', `/api/animals/${animalId}/access-grants`), false)
 })
 
-test('standard login can resolve a unique active temporary access by email and password', async () => {
-  const originalQuery = pool.query
-  const grant = {
-    id: '8a85d4d9-32c8-4e96-8d0a-34e7aad91111',
-    animal_id: 'c08623b6-0a78-4450-9fc8-44249520b522',
-    recipient_email: 'caregiver@example.com',
-    password_hash: await bcrypt.hash('temporary-password', 4),
-    role: 'Cuidador',
-    permissions: JSON.stringify(['animal:read', 'health:read']),
-  }
-  pool.query = async (_query, params) => {
-    assert.deepEqual(params, ['caregiver@example.com'])
-    return [[grant], []]
-  }
-  try {
-    assert.deepEqual(
-      await bioActaService.findAccessGrantLogin(' Caregiver@example.com ', 'temporary-password'),
-      {
-        grantId: grant.id,
-        animalId: grant.animal_id,
-        animalIds: [grant.animal_id],
-        allAnimals: false,
-        email: grant.recipient_email,
-        role: 'Cuidador',
-        permissions: ['animal:read', 'health:read'],
-        expiresAt: null,
-      },
-    )
-    assert.equal(await bioActaService.findAccessGrantLogin('caregiver@example.com', 'wrong-password'), null)
-  } finally {
-    pool.query = originalQuery
-  }
-})
-
 test('access grant administration only lists grants owned by the current caretaker and matching the animal scope', async () => {
   const originalQuery = pool.query
   const user = { id: 'owner-id', role: 'user' }
@@ -116,38 +82,7 @@ test('access grant administration only lists grants owned by the current caretak
   }
 })
 
-test('standard login requires an invitation link when credentials match multiple grants', async () => {
-  const originalQuery = pool.query
-  const passwordHash = await bcrypt.hash('temporary-password', 4)
-  pool.query = async () => [[
-    {
-      id: '8a85d4d9-32c8-4e96-8d0a-34e7aad91111',
-      animal_id: 'c08623b6-0a78-4450-9fc8-44249520b522',
-      recipient_email: 'caregiver@example.com',
-      password_hash: passwordHash,
-      role: 'Cuidador',
-      permissions: '["animal:read"]',
-    },
-    {
-      id: '2c0c61a7-0872-4ca9-bff1-901a5297b733',
-      animal_id: 'a8700541-12a5-4dda-a334-904eb92ef933',
-      recipient_email: 'caregiver@example.com',
-      password_hash: passwordHash,
-      role: 'Cuidador',
-      permissions: '["animal:read"]',
-    },
-  ], []]
-  try {
-    await assert.rejects(
-      bioActaService.findAccessGrantLogin('caregiver@example.com', 'temporary-password'),
-      { statusCode: 409 },
-    )
-  } finally {
-    pool.query = originalQuery
-  }
-})
-
-test('POST /auth/login accepts temporary credentials and issues a restricted guest session', async () => {
+test('POST /auth/login does not convert temporary credentials into a guest session', async () => {
   const originalQuery = pool.query
   const grant = {
     id: '8a85d4d9-32c8-4e96-8d0a-34e7aad91111',
@@ -159,7 +94,9 @@ test('POST /auth/login accepts temporary credentials and issues a restricted gue
     revoked_at: null,
     expires_at: null,
   }
+  const queries = []
   pool.query = async (query) => {
+    queries.push(query)
     if (query.includes('FROM users WHERE email = ?')) return [[], []]
     if (query.includes('FROM access_grants')) return [[grant], []]
     throw new Error(`Unexpected query in access login test: ${query}`)
@@ -173,10 +110,22 @@ test('POST /auth/login accepts temporary credentials and issues a restricted gue
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: grant.recipient_email, password: 'temporary-password' }),
     })
-    assert.equal(loginResponse.status, 200)
-    assert.equal((await loginResponse.json()).user.isAccessGuest, true)
+    assert.equal(loginResponse.status, 401)
+    assert.equal(queries.some((query) => query.includes('FROM access_grants')), false)
 
-    const setCookie = loginResponse.headers.get('set-cookie')
+    const accessResponse = await fetch(`${baseUrl}/api/auth/access-grant-login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        grantId: grant.id,
+        email: grant.recipient_email,
+        password: 'temporary-password',
+      }),
+    })
+    assert.equal(accessResponse.status, 200)
+    assert.equal((await accessResponse.json()).user.isAccessGuest, true)
+
+    const setCookie = accessResponse.headers.get('set-cookie')
     const guestCookie = setCookie?.match(/bioacta_guest_session=([^;,]+)/)?.[0]
     assert.ok(guestCookie)
 

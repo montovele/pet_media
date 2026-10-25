@@ -22,21 +22,22 @@ function formatDate(value: string) {
   <main class="photos-view">
     <header class="photos-heading">
       <span class="eyebrow"><Camera :size="14" /> BIBLIOTECA PERSONAL</span>
-      <div class="photos-heading-row"><div><h1>Fotos</h1><p>Imágenes de tus historias y publicaciones, reunidas en un solo lugar.</p></div><span>{{ photos.items.length }} {{ photos.items.length === 1 ? 'foto' : 'fotos' }}</span></div>
+      <div class="photos-heading-row"><div><h1>Fotos y videos</h1><p>Imágenes y videos de tus historias, publicaciones y actividades, reunidos en un solo lugar.</p></div><span>{{ photos.items.length }} {{ photos.items.length === 1 ? 'elemento' : 'elementos' }}</span></div>
     </header>
     <div class="photos-toolbar">
       <span><Images :size="15" /> {{ filteredPhotos.length }} elementos</span>
-      <label class="photos-search"><Search :size="15" /><input v-model="search" type="search" placeholder="Buscar en tus fotos" aria-label="Buscar en tus fotos" /></label>
+      <label class="photos-search"><Search :size="15" /><input v-model="search" type="search" placeholder="Buscar en tu multimedia" aria-label="Buscar en tu multimedia" /></label>
     </div>
     <p v-if="photos.loading" class="photos-state">Cargando tu biblioteca…</p>
     <p v-else-if="photos.error" class="photos-state photos-state--error" role="alert">{{ photos.error }}</p>
-    <section v-else-if="filteredPhotos.length" class="photo-grid" aria-label="Galería de fotos">
+    <section v-else-if="filteredPhotos.length" class="photo-grid" aria-label="Galería de fotos y videos">
       <RouterLink v-for="photo in filteredPhotos" :key="photo.id" class="photo-tile" :to="{ name: 'photo-detail', params: { id: photo.id } }">
-        <img :src="photo.url" :alt="photo.title" loading="lazy" />
+        <video v-if="photo.mediaType === 'video'" :src="photo.url" :aria-label="photo.title" muted playsinline preload="metadata" />
+        <img v-else :src="photo.url" :alt="photo.title" loading="lazy" />
         <span class="photo-tile-caption"><strong>{{ photo.title }}</strong><span>{{ photo.source }} · {{ formatDate(photo.createdAt) }}</span></span>
       </RouterLink>
     </section>
-    <section v-else class="photos-empty"><span><Images :size="22" /></span><h2>{{ search ? 'No hay coincidencias' : 'Tu galería está lista' }}</h2><p>{{ search ? 'Prueba con otro título o tipo de contenido.' : 'Las imágenes de tus historias y publicaciones aparecerán aquí.' }}</p></section>
+    <section v-else class="photos-empty"><span><Images :size="22" /></span><h2>{{ search ? 'No hay coincidencias' : 'Tu galería está lista' }}</h2><p>{{ search ? 'Prueba con otro título o tipo de contenido.' : 'Las fotos y videos de tus historias, publicaciones y actividades aparecerán aquí.' }}</p></section>
     <SponsoredAdPlacement v-if="photos.items.length" />
   </main>
 </template>
@@ -55,8 +56,8 @@ function formatDate(value: string) {
 .photos-search input { width: 100%; height: 34px; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 10px; }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 11px; }
 .photo-tile { position: relative; display: block; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 6px; background: #e8ede7; text-decoration: none; }
-.photo-tile img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
-.photo-tile:hover img { transform: scale(1.035); }
+.photo-tile img, .photo-tile video { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.photo-tile:hover img, .photo-tile:hover video { transform: scale(1.035); }
 .photo-tile-caption { position: absolute; right: 0; bottom: 0; left: 0; display: grid; gap: 4px; padding: 28px 11px 10px; color: white; background: linear-gradient(transparent, rgba(19,31,23,.78)); }
 .photo-tile-caption strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .photo-tile-caption > span { color: rgba(255,255,255,.78); font-size: 8px; }

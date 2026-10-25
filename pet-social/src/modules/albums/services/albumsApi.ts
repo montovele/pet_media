@@ -7,7 +7,11 @@ const albumSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   createdAt: z.string(),
-  photos: z.array(z.object({ id: z.string(), url: z.string() })),
+  photos: z.array(z.object({
+    id: z.string(),
+    url: z.string(),
+    mediaType: z.enum(['image', 'video']).default('image'),
+  })),
 })
 
 export const albumsApi = {

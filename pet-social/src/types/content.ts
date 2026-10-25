@@ -36,7 +36,8 @@ export interface Photo {
   url: string
   title: string
   createdAt: string
-  source: 'Historia' | 'Publicación'
+  source: 'Historia' | 'Publicación' | 'Actividad'
+  mediaType: 'image' | 'video'
 }
 
 export interface Album {
@@ -44,7 +45,7 @@ export interface Album {
   title: string
   description?: string
   createdAt: string
-  photos: Array<Pick<Photo, 'id' | 'url'>>
+  photos: Array<Pick<Photo, 'id' | 'url' | 'mediaType'>>
 }
 
 export interface FeedAuthor {

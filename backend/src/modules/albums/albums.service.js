@@ -10,14 +10,18 @@ async function getAlbums(userId) {
   if (!albums.length) return []
 
   const [photos] = await pool.query(
-    `SELECT album_id, photo_id, photo_url, position FROM album_photos
-    WHERE user_id = ? AND album_id IN (${albums.map(() => '?').join(', ')}) ORDER BY position ASC`,
+    `SELECT album_photos.album_id, album_photos.photo_id, album_photos.photo_url, album_photos.position,
+      COALESCE(media.media_type, 'image') AS media_type
+    FROM album_photos
+    LEFT JOIN story_media media ON album_photos.photo_id = CONCAT('media:', media.id)
+    WHERE album_photos.user_id = ? AND album_photos.album_id IN (${albums.map(() => '?').join(', ')})
+    ORDER BY album_photos.position ASC`,
     [userId, ...albums.map((album) => album.id)],
   )
   const photosByAlbum = new Map()
   for (const photo of photos) {
     const items = photosByAlbum.get(photo.album_id) || []
-    items.push({ id: photo.photo_id, url: photo.photo_url })
+    items.push({ id: photo.photo_id, url: photo.photo_url, mediaType: photo.media_type })
     photosByAlbum.set(photo.album_id, items)
   }
   return albums.map((album) => ({

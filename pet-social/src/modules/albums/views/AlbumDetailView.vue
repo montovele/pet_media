@@ -34,11 +34,15 @@ watch(() => route.params.id, () => { void loadAlbum() })
     <p v-if="loading" class="album-detail-state">Cargando álbum…</p>
     <section v-else-if="error" class="album-detail-empty" role="alert"><span><ImageOff :size="22" /></span><h1>Álbum no disponible</h1><p>{{ error }}</p></section>
     <article v-else-if="album" class="album-detail-content">
-      <header class="album-detail-heading"><span class="eyebrow"><Layers3 :size="13" /> COLECCIÓN PERSONAL</span><h1>{{ album.title }}</h1><p v-if="album.description">{{ album.description }}</p><span class="album-detail-count"><Images :size="14" /> {{ album.photos.length }} {{ album.photos.length === 1 ? 'foto' : 'fotos' }}</span></header>
-      <section v-if="album.photos.length" class="album-detail-grid" aria-label="Fotos del álbum">
-        <figure v-for="(photo, index) in album.photos" :key="photo.id" class="album-detail-photo"><img :src="photo.url" :alt="`${album.title}, foto ${index + 1}`" loading="lazy" /><figcaption>{{ index + 1 }} / {{ album.photos.length }}</figcaption></figure>
+      <header class="album-detail-heading"><span class="eyebrow"><Layers3 :size="13" /> COLECCIÓN PERSONAL</span><h1>{{ album.title }}</h1><p v-if="album.description">{{ album.description }}</p><span class="album-detail-count"><Images :size="14" /> {{ album.photos.length }} {{ album.photos.length === 1 ? 'elemento' : 'elementos' }}</span></header>
+      <section v-if="album.photos.length" class="album-detail-grid" aria-label="Multimedia del álbum">
+        <figure v-for="(photo, index) in album.photos" :key="photo.id" class="album-detail-photo">
+          <video v-if="photo.mediaType === 'video'" :src="photo.url" :aria-label="`${album.title}, video ${index + 1}`" controls playsinline preload="metadata" />
+          <img v-else :src="photo.url" :alt="`${album.title}, foto ${index + 1}`" loading="lazy" />
+          <figcaption>{{ index + 1 }} / {{ album.photos.length }}</figcaption>
+        </figure>
       </section>
-      <section v-else class="album-detail-empty"><span><Images :size="22" /></span><h2>Este álbum aún no tiene fotos</h2><p>Vuelve a la biblioteca para preparar otra colección.</p></section>
+      <section v-else class="album-detail-empty"><span><Images :size="22" /></span><h2>Este álbum aún no tiene contenido multimedia</h2><p>Vuelve a la biblioteca para preparar otra colección.</p></section>
     </article>
     <SponsoredAdPlacement v-if="album && !loading" />
   </main>
@@ -56,7 +60,7 @@ watch(() => route.params.id, () => { void loadAlbum() })
 .album-detail-count { display: inline-flex; align-items: center; gap: 5px; color: #89958c; font-size: 9px; }
 .album-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; padding-top: 15px; }
 .album-detail-photo { position: relative; aspect-ratio: 1 / 1; overflow: hidden; margin: 0; border-radius: 6px; background: #e7ece6; }
-.album-detail-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.album-detail-photo img, .album-detail-photo video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .album-detail-photo figcaption { position: absolute; right: 0; bottom: 0; left: 0; padding: 20px 9px 8px; color: white; background: linear-gradient(transparent, rgba(20,31,24,.65)); font-size: 9px; text-align: right; }
 .album-detail-empty, .album-detail-state { padding: 44px 15px; color: #7b897f; font-size: 10px; text-align: center; }
 .album-detail-empty { display: grid; justify-items: center; }

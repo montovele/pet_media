@@ -51,23 +51,25 @@ async function submitAlbum() {
   <main class="albums-page">
     <header class="albums-heading">
       <span class="eyebrow"><Layers3 :size="14" /> COLECCIONES PERSONALES</span>
-      <div class="albums-heading-row"><div><h1>Álbumes</h1><p>Organiza las fotos de tu biblioteca en colecciones por tema, lugar o etapa.</p></div><button class="button-primary" type="button" @click="creating = !creating"><X v-if="creating" :size="16" /><Plus v-else :size="16" />{{ creating ? 'Cerrar' : 'Nuevo álbum' }}</button></div>
+      <div class="albums-heading-row"><div><h1>Álbumes</h1><p>Organiza las fotos y videos de tus historias, publicaciones y actividades en colecciones.</p></div><button class="button-primary" type="button" @click="creating = !creating"><X v-if="creating" :size="16" /><Plus v-else :size="16" />{{ creating ? 'Cerrar' : 'Nuevo álbum' }}</button></div>
     </header>
 
     <section v-if="creating" class="album-create-section" aria-labelledby="album-create-title">
-      <div class="album-create-heading"><span class="album-create-icon"><Plus :size="17" /></span><div><h2 id="album-create-title">Crear colección</h2><p>Elige un nombre y añade las fotos que quieras reunir.</p></div></div>
+      <div class="album-create-heading"><span class="album-create-icon"><Plus :size="17" /></span><div><h2 id="album-create-title">Crear colección</h2><p>Elige un nombre y añade fotos o videos de tu biblioteca.</p></div></div>
       <form class="album-form" @submit.prevent="submitAlbum">
         <label class="album-field"><span>Nombre del álbum</span><input v-model="form.title" maxlength="120" required placeholder="Ej. Verano en la costa" /></label>
         <label class="album-field"><span>Descripción</span><textarea v-model="form.description" rows="2" maxlength="500" placeholder="Opcional" /></label>
-        <div class="album-picker-heading"><span>Fotos de tu biblioteca</span><small>{{ selectedPhotoIds.length }} seleccionadas de {{ availablePhotoCount }}</small></div>
+        <div class="album-picker-heading"><span>Multimedia de tu biblioteca</span><small>{{ selectedPhotoIds.length }} seleccionados de {{ availablePhotoCount }}</small></div>
         <div v-if="photos.items.length" class="album-photo-picker">
           <button v-for="photo in photos.items" :key="photo.id" class="album-photo-option" :class="{ selected: selectedPhotoIds.includes(photo.id) }" type="button" :aria-pressed="selectedPhotoIds.includes(photo.id)" @click="togglePhoto(photo.id)">
-            <img :src="photo.url" :alt="photo.title" loading="lazy" /><span class="album-photo-check"><span v-if="selectedPhotoIds.includes(photo.id)">{{ selectedPhotoIds.indexOf(photo.id) + 1 }}</span></span>
+            <video v-if="photo.mediaType === 'video'" :src="photo.url" :aria-label="photo.title" muted playsinline preload="metadata" />
+            <img v-else :src="photo.url" :alt="photo.title" loading="lazy" />
+            <span class="album-photo-check"><span v-if="selectedPhotoIds.includes(photo.id)">{{ selectedPhotoIds.indexOf(photo.id) + 1 }}</span></span>
           </button>
         </div>
-        <p v-else class="album-no-photos">Aún no hay fotos disponibles. Sube una imagen al crear una historia para añadirla a un álbum.</p>
+        <p v-else class="album-no-photos">Aún no hay contenido multimedia disponible. Añade fotos o videos en una historia o actividad para incluirlos aquí.</p>
         <p v-if="albums.error" class="album-error" role="alert">{{ albums.error }}</p>
-        <div class="album-form-footer"><span>Las fotos se mantienen en su historia original.</span><button class="button-primary" type="submit" :disabled="albums.saving"><Plus :size="15" />{{ albums.saving ? 'Guardando…' : 'Guardar álbum' }}</button></div>
+        <div class="album-form-footer"><span>El contenido se mantiene en su historia o actividad original.</span><button class="button-primary" type="submit" :disabled="albums.saving"><Plus :size="15" />{{ albums.saving ? 'Guardando…' : 'Guardar álbum' }}</button></div>
       </form>
     </section>
 
@@ -78,13 +80,16 @@ async function submitAlbum() {
       <div v-else-if="albums.items.length" class="album-grid">
         <RouterLink v-for="album in albums.items" :key="album.id" class="album-card" :to="{ name: 'album-detail', params: { id: album.id } }">
           <div class="album-cover-grid" :class="`album-cover-grid--${Math.min(album.photos.length, 4)}`">
-            <img v-for="photo in album.photos.slice(0, 4)" :key="photo.id" :src="photo.url" :alt="album.title" loading="lazy" />
+            <template v-for="photo in album.photos.slice(0, 4)" :key="photo.id">
+              <video v-if="photo.mediaType === 'video'" :src="photo.url" :aria-label="album.title" muted playsinline preload="metadata" />
+              <img v-else :src="photo.url" :alt="album.title" loading="lazy" />
+            </template>
             <span v-if="!album.photos.length" class="album-cover-empty"><Images :size="26" /></span>
           </div>
-          <div class="album-card-copy"><h3>{{ album.title }}</h3><p v-if="album.description">{{ album.description }}</p><span>{{ album.photos.length }} {{ album.photos.length === 1 ? 'foto' : 'fotos' }}</span></div>
+          <div class="album-card-copy"><h3>{{ album.title }}</h3><p v-if="album.description">{{ album.description }}</p><span>{{ album.photos.length }} {{ album.photos.length === 1 ? 'elemento' : 'elementos' }}</span></div>
         </RouterLink>
       </div>
-      <div v-else class="albums-empty"><span class="album-empty-icon"><Images :size="22" /></span><h2>Todavía no hay álbumes</h2><p>Crea una colección para agrupar las fotos de tu biblioteca.</p><button class="button-secondary" type="button" @click="creating = true"><Plus :size="15" /> Crear primer álbum</button></div>
+      <div v-else class="albums-empty"><span class="album-empty-icon"><Images :size="22" /></span><h2>Todavía no hay álbumes</h2><p>Crea una colección para agrupar las fotos y videos de tu biblioteca.</p><button class="button-secondary" type="button" @click="creating = true"><Plus :size="15" /> Crear primer álbum</button></div>
     </section>
     <SponsoredAdPlacement v-if="albums.items.length" />
   </main>
@@ -113,7 +118,7 @@ async function submitAlbum() {
 .album-photo-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 7px; max-height: 270px; overflow: auto; padding: 2px; }
 .album-photo-option { position: relative; aspect-ratio: 1; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 5px; background: #e9eee8; cursor: pointer; }
 .album-photo-option.selected { border-color: #397459; }
-.album-photo-option img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.album-photo-option img, .album-photo-option video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .album-photo-check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.9); border-radius: 50%; color: #fff; background: rgba(31,45,35,.6); font-size: 9px; font-weight: 700; }
 .album-photo-option.selected .album-photo-check { border-color: #397459; background: #397459; }
 .album-no-photos { margin: 0; padding: 15px; color: #7b897f; background: #f5f7f3; font-size: 10px; line-height: 1.5; }
@@ -129,8 +134,8 @@ async function submitAlbum() {
 .album-card { display: block; overflow: hidden; border: 1px solid #e5eae2; border-radius: 6px; color: inherit; background: white; text-decoration: none; }
 .album-cover-grid { display: grid; aspect-ratio: 1.45; overflow: hidden; background: #e9eee8; }
 .album-cover-grid--2, .album-cover-grid--3, .album-cover-grid--4 { grid-template-columns: repeat(2, 1fr); }
-.album-cover-grid--3 img:first-child { grid-row: span 2; }
-.album-cover-grid img { width: 100%; height: 100%; min-height: 0; object-fit: cover; }
+.album-cover-grid--3 img:first-child, .album-cover-grid--3 video:first-child { grid-row: span 2; }
+.album-cover-grid img, .album-cover-grid video { width: 100%; height: 100%; min-height: 0; object-fit: cover; }
 .album-cover-empty { grid-area: 1 / 1 / -1 / -1; display: grid; place-items: center; color: #7b8d7f; }
 .album-card-copy { padding: 11px 12px 12px; }
 .album-card-copy h3 { margin: 0; color: var(--ink); font-size: 12px; }
